@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="jssrc/pusher.js"></script>
+        <script type='text/javascript'>
+            let pusher;
+
+            async function publish() {
+                let videoElement = document.getElementById('video_container_publish')
+                pusher = new Pusher();
+
+                await pusher.init(videoElement);
+            }
+        </script>
+    </head>
+
+    <body>
+        <h1>Webcodec&Webtransport push demo</h1>
+        <br/>
+        <div>
+            <button onclick="publish()">publish</button>
+            <br><br>
+        </div>
+
+        <div id="medialive">
+            publish preview:
+            <br/>
+            <div id="container">
+                <video id="video_container_publish" playsinline controls autoplay muted width="640" height="480">
+                </video>
+            </div>
+        </div>
+    </body>
+</html>
