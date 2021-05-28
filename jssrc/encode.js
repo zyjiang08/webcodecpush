@@ -1,4 +1,4 @@
-class Pusher {
+class Encoder {
     constructor() {
         this.videoElement_ = null;
         this.vencoder_ = null;
@@ -23,8 +23,8 @@ class Pusher {
                 console.error("video encoder error:" + error)
             }
         })
-        this.vencoder_.configure({
-            codec: 'vp8',
+        await this.vencoder_.configure({
+            codec: 'avc1.42e01f',
             width: 640,
             height: 480
         })
@@ -36,7 +36,7 @@ class Pusher {
                 console.error("audio encoder error:" + error);
             }
         });
-        this.aencoder_.configure({ codec: 'opus', numberOfChannels: 2, sampleRate: 48000 });
+        await this.aencoder_.configure({ codec: 'opus', numberOfChannels: 1, sampleRate: 48000 });
 
         //open device
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -69,7 +69,8 @@ class Pusher {
             const insert_keyframe = (this.sendFrames_ % 30) == 0;
             this.sendFrames_++;
             if (insert_keyframe) {
-                console.log('keyframe == ');
+                console.log('insert keyframe');
+                //console.log(frame);
             }
             this.vencoder_.encode(frame, { keyFrame: insert_keyframe });
             controller.enqueue(frame);
@@ -77,8 +78,9 @@ class Pusher {
 
     }
 
-    audioTransform() {
+    audioTransform(frame, controller) {
         return (frame, controller) => {
+            //console.info(frame)
             this.aencoder_.encode(frame);
             controller.enqueue(frame);
         }
@@ -86,12 +88,12 @@ class Pusher {
     }
 
     async handleVideoEncoded(chunk) {
-        const { type, timestamp, duration, data } = chunk
-        console.info("video type:" + type + ", timestmap:" + timestamp + ", duration:", duration)
+        const { type, timestamp, data } = chunk
+        //console.info("video type:" + type + ", timestmap:" + timestamp )
     }
 
     async handleAudioEncoded(chunk) {
-        const { type, timestamp, data } = chunk;
-        console.info("audio type:" + type + ", timestmap:" + timestamp)
+        const { type, timestamp, data, byteLength } = chunk;
+        console.info("audio type:" + type + ", timestmap:" + timestamp + ", byteLength:" + byteLength)
     }
 }

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="jssrc/pusher.js"></script>
+        <script src="jssrc/encode.js"></script>
         <script type='text/javascript'>
-            let pusher;
+            let encoder;
 
             async function publish() {
                 let videoElement = document.getElementById('video_container_publish')
-                pusher = new Pusher();
+                encoder = new Encoder();
 
-                await pusher.init(videoElement);
+                await encoder.init(videoElement);
             }
         </script>
     </head>
