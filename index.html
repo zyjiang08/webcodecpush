@@ -2,14 +2,16 @@
 <html>
     <head>
         <script src="jssrc/encode.js"></script>
+        <script src="jssrc/flvmux.js"></script>
+        <script src="jssrc/http3writer.js"></script>
+        <script src="jssrc/wswriter.js"></script>
         <script type='text/javascript'>
-            let encoder;
-
             async function publish() {
                 let videoElement = document.getElementById('video_container_publish')
-                encoder = new Encoder();
+                wsClient = new WsWriter();
 
-                await encoder.init(videoElement);
+                wsClient.SetVideoElement(videoElement);
+                wsClient.Init("ws://localhost:1900/live/1000.flv");
             }
         </script>
     </head>

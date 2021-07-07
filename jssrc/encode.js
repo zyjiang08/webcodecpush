@@ -5,9 +5,14 @@ class Encoder {
         this.aencoder_ = null;
         this.sendFrames_ = 0;
         this.videoGop_ = 30;
+        this.mux = null;
     }
 
-    async init(videoElement) {
+    async SetMux(mux) {
+        this.mux = mux;
+    }
+
+    async Init(videoElement) {
         const constraints = {
             video: { width: { exact: 640 }, height: { exact: 480 } },
             audio: {
@@ -24,6 +29,7 @@ class Encoder {
             }
         })
         await this.vencoder_.configure({
+            avc: {format: "avc"},
             codec: 'avc1.42e01f',
             width: 640,
             height: 480
@@ -61,6 +67,7 @@ class Encoder {
         processedStream.addTrack(vgenerator);
         processedStream.addTrack(agenerator);
         videoElement.srcObject = processedStream;
+
         await videoElement.play();
     }
 
@@ -87,13 +94,21 @@ class Encoder {
  
     }
 
-    async handleVideoEncoded(chunk) {
-        const { type, timestamp, data } = chunk
-        //console.info("video type:" + type + ", timestmap:" + timestamp )
+    async handleVideoEncoded(chunk, metadata) {
+        const { timestamp, data } = chunk
+
+        if (metadata.decoderConfig) {
+            //todo:
+            let avcSeqHdr = metadata.decoderConfig.description;
+            //console.log("avc seq hdr:", avcSeqHdr, "data:", data);
+            this.mux.DoMux({media:"video", timestamp, data:avcSeqHdr});
+        }
+
+        this.mux.DoMux({media:"video", timestamp, data});
     }
 
     async handleAudioEncoded(chunk) {
-        const { type, timestamp, data, byteLength } = chunk;
-        console.info("audio type:" + type + ", timestmap:" + timestamp + ", byteLength:" + byteLength)
+        //const { type, timestamp, data, byteLength } = chunk;
+        //console.info("audio type:" + type + ", timestmap:" + timestamp + ", byteLength:" + byteLength)
     }
 }
