@@ -32,7 +32,7 @@ class FlvMux {
 
     }
     async DoMux(packet) {
-        let {media, timestamp, data} = packet;
+        let {media, timestamp, data, isSeq, isKey} = packet;
 
         //console.log("domux media:", media, "timestamp:", timestamp, "data:", data);
         if ((media == null) || (media != "video" && media != "audio")) {
@@ -41,7 +41,7 @@ class FlvMux {
 
         /*|Tagtype(8)|DataSize(24)|Timestamp(24)|TimestampExtended(8)|StreamID(24)|Data(...)|PreviousTagSize(32)|*/
         let dataSize = data.byteLength;
-        let total = 11 + dataSize + 4
+        let total = 11 + 5 + dataSize + 4
         let tagData = new Uint8Array(total)
         
         if (media == "video") {
@@ -50,14 +50,16 @@ class FlvMux {
             tagData[0] = 8;
         }
 
+        let mediaSize = 5 + dataSize;//0x17 01 00 00 00 + [data...]
         //Set DataSize(24)
-        tagData[1] = (dataSize >> 16) & 0xff;
-        tagData[2] = (dataSize >> 8) & 0xff;
-        tagData[3] = dataSize & 0xff;
+        tagData[1] = (mediaSize >> 16) & 0xff;
+        tagData[2] = (mediaSize >> 8) & 0xff;
+        tagData[3] = mediaSize & 0xff;
 
         //Set Timestamp(24)|TimestampExtended(8)
         let timestampBase = timestamp & 0xffffff;
-        let timestampExt = (timestamp >> 24) & 0xff
+        let timestampExt = (timestamp >> 24) & 0xff;
+
         tagData[4] = (timestampBase >> 16) & 0xff;
         tagData[5] = (timestampBase >> 8) & 0xff;
         tagData[6] = timestampBase & 0xff;
@@ -68,22 +70,48 @@ class FlvMux {
         tagData[9] = 0;
         tagData[10] = 1;
 
-        let start = 11;
+        
+        if (media == "video") {
+            //set media header
+            if (isSeq) {
+                tagData[11] = 0x17;
+                tagData[12] = 0x00;
+            } else if (isKey) {
+                tagData[11] = 0x17;
+                tagData[12] = 0x01;
+            } else {
+                tagData[11] = 0x27;
+                tagData[12] = 0x01;
+            }
+        } else if (media == "audio") {
+            tagData[11] = 0x9f;
+            if (isSeq) {
+                tagData[12] = 0x00;
+            } else {
+                tagData[12] = 0x01;
+            }
+        } else {
+            return;
+        }
+
+        tagData[13] = 0x00;
+        tagData[14] = 0x00;
+        tagData[15] = 0x00;
+
+        let start = 11 + 5;
         var inputData = new Uint8Array(data);
         for (var i = 0; i < dataSize; i++) {
             tagData[start + i] = inputData[i];
         }
 
-        let preSize = 11+data.byteLength;
-        start = 11 + dataSize;
+        let preSize = 11 + 5 + data.byteLength;
+        start = 11 + 5 + dataSize;
 
         tagData[start + 0] = (preSize >> 24) & 0xff;
         tagData[start + 1] = (preSize >> 16) & 0xff;
         tagData[start + 2] = (preSize >> 8) & 0xff;
         tagData[start + 3] = preSize & 0xff;
 
-        //console.log("media data:", data);
-        //console.log("mux dataSize:", dataSize, "tagdata:", tagData);
         await this.output(tagData);
     }
 

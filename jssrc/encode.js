@@ -14,7 +14,7 @@ class Encoder {
 
     async Init(videoElement) {
         const constraints = {
-            video: { width: { exact: 640 }, height: { exact: 480 } },
+            video: { width: { exact: 1280 }, height: { exact: 720 } },
             audio: {
                 channelCount:2,
                 sampleRate:48000,
@@ -30,9 +30,9 @@ class Encoder {
         })
         await this.vencoder_.configure({
             avc: {format: "avc"},
-            codec: 'avc1.42e01f',
-            width: 640,
-            height: 480
+            codec: 'avc1.4d0032',
+            width: 1280,
+            height: 720
         })
 
         //audio encode init
@@ -73,16 +73,11 @@ class Encoder {
 
     videoTransform(frame, controller) {
         return (frame, controller) => {
-            const insert_keyframe = (this.sendFrames_ % 30) == 0;
+            const insert_keyframe = (this.sendFrames_ % 120) == 0;
             this.sendFrames_++;
-            if (insert_keyframe) {
-                console.log('insert keyframe');
-                //console.log(frame);
-            }
             this.vencoder_.encode(frame, { keyFrame: insert_keyframe });
             controller.enqueue(frame);
         }
-
     }
 
     audioTransform(frame, controller) {
@@ -95,20 +90,34 @@ class Encoder {
     }
 
     async handleVideoEncoded(chunk, metadata) {
-        const { timestamp, data } = chunk
+        const { type, timestamp, data } = chunk
 
+        let ts = timestamp/1000;
         if (metadata.decoderConfig) {
             //todo:
             let avcSeqHdr = metadata.decoderConfig.description;
             //console.log("avc seq hdr:", avcSeqHdr, "data:", data);
-            this.mux.DoMux({media:"video", timestamp, data:avcSeqHdr});
+            this.mux.DoMux({media:"video", timestamp:ts, data:avcSeqHdr, isSeq:true, isKey:false});
         }
 
-        this.mux.DoMux({media:"video", timestamp, data});
+        let isKey = false;
+        if (type == "key") {
+            isKey = true;
+        }
+        this.mux.DoMux({media:"video", timestamp:ts, data, isSeq:false, isKey});
     }
 
-    async handleAudioEncoded(chunk) {
-        //const { type, timestamp, data, byteLength } = chunk;
-        //console.info("audio type:" + type + ", timestmap:" + timestamp + ", byteLength:" + byteLength)
+    async handleAudioEncoded(chunk, metadata) {
+        const {timestamp, data } = chunk
+
+        let ts = timestamp/1000;
+        if (metadata.decoderConfig) {
+            //todo:
+            let audioSeqHdr = metadata.decoderConfig.description;
+            //console.log("avc seq hdr:", avcSeqHdr, "data:", data);
+            this.mux.DoMux({media:"audio", timestamp:ts, data:audioSeqHdr, isSeq:true, isKey:false});
+        }
+
+        this.mux.DoMux({media:"audio", timestamp:ts, data, isSeq:false, isKey:false});
     }
 }
