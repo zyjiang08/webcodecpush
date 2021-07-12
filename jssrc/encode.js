@@ -114,7 +114,6 @@ class Encoder {
         if (metadata.decoderConfig) {
             //todo:
             let audioSeqHdr = metadata.decoderConfig.description;
-            //console.log("avc seq hdr:", avcSeqHdr, "data:", data);
             this.mux.DoMux({media:"audio", timestamp:ts, data:audioSeqHdr, isSeq:true, isKey:false});
         }
 

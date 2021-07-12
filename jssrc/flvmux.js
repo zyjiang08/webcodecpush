@@ -41,7 +41,15 @@ class FlvMux {
 
         /*|Tagtype(8)|DataSize(24)|Timestamp(24)|TimestampExtended(8)|StreamID(24)|Data(...)|PreviousTagSize(32)|*/
         let dataSize = data.byteLength;
-        let total = 11 + 5 + dataSize + 4
+        let total = 0;
+
+        if (media == "video") {
+            //11 bytes header | 0x17 00 | 00 00 00 | data[...] | pre tag size
+            total = 11 + 2 + 3 + dataSize + 4;
+        } else if (media == "audio") {
+            //11 bytes header | 0xaf 00 | data[...] | pre tag size
+            total = 11 + 2 + dataSize + 4;
+        }
         let tagData = new Uint8Array(total)
         
         if (media == "video") {
@@ -50,7 +58,15 @@ class FlvMux {
             tagData[0] = 8;
         }
 
-        let mediaSize = 5 + dataSize;//0x17 01 00 00 00 + [data...]
+        let mediaSize = 0;//5 + dataSize;//0x17 01 00 00 00 + [data...]
+        if (media == "video") {
+            //0x17 00 | 00 00 00 | data[...] 
+            mediaSize = 2 + 3 + dataSize;
+        } else if (media == "audio") {
+            //0xaf 00 | data[...]
+            mediaSize = 2 + dataSize;
+        }
+
         //Set DataSize(24)
         tagData[1] = (mediaSize >> 16) & 0xff;
         tagData[2] = (mediaSize >> 8) & 0xff;
@@ -70,6 +86,8 @@ class FlvMux {
         tagData[9] = 0;
         tagData[10] = 1;
 
+        let start = 0;
+        let preSize = 0;
         
         if (media == "video") {
             //set media header
@@ -83,6 +101,11 @@ class FlvMux {
                 tagData[11] = 0x27;
                 tagData[12] = 0x01;
             }
+            tagData[13] = 0x00;
+            tagData[14] = 0x00;
+            tagData[15] = 0x00;
+            start = 11 + 5;
+            preSize = 11 + 5 + data.byteLength;
         } else if (media == "audio") {
             tagData[11] = 0x9f;
             if (isSeq) {
@@ -90,22 +113,17 @@ class FlvMux {
             } else {
                 tagData[12] = 0x01;
             }
+            start = 11 + 2;
+            preSize = 11 + 2 + data.byteLength;
         } else {
             return;
         }
 
-        tagData[13] = 0x00;
-        tagData[14] = 0x00;
-        tagData[15] = 0x00;
-
-        let start = 11 + 5;
         var inputData = new Uint8Array(data);
         for (var i = 0; i < dataSize; i++) {
             tagData[start + i] = inputData[i];
         }
-
-        let preSize = 11 + 5 + data.byteLength;
-        start = 11 + 5 + dataSize;
+        start = preSize;
 
         tagData[start + 0] = (preSize >> 24) & 0xff;
         tagData[start + 1] = (preSize >> 16) & 0xff;
