@@ -5,6 +5,10 @@ class Encoder {
         this.aencoder_ = null;
         this.sendFrames_ = 0;
         this.videoGop_ = 30;
+        this.videoCodecType = "h264";
+        //this.videoCodecType = "vp8";
+        //this.videoCodecType = "vp9";
+        this.audioCodecType = "opus";
         this.mux = null;
     }
 
@@ -28,12 +32,32 @@ class Encoder {
                 console.error("video encoder error:" + error)
             }
         })
-        await this.vencoder_.configure({
-            avc: {format: "avc"},
-            codec: 'avc1.4d0032',
-            width: 1280,
-            height: 720
-        })
+
+        if (this.videoCodecType == "h264") {
+            await this.vencoder_.configure({
+                avc: {format: "avc"},
+                codec: 'avc1.4d0032',
+                width: 1280,
+                height: 720
+            })
+        } else if (this.videoCodecType == "vp8") {
+            await this.vencoder_.configure({
+                codec: 'vp8',
+                width: 1280,
+                height: 720,
+                bitrate: 1200000,
+            })
+        }  else if (this.videoCodecType == "vp9") {
+            await this.vencoder_.configure({
+                codec: 'vp09.00.10.08',
+                width: 1280,
+                height: 720,
+                bitrate: 1200000,
+            })
+        } else {
+            console.error("video codec type error:", this.videoCodecType);
+            return;
+        }
 
         //audio encode init
         this.aencoder_ = new AudioEncoder({
@@ -42,7 +66,7 @@ class Encoder {
                 console.error("audio encoder error:" + error);
             }
         });
-        await this.aencoder_.configure({ codec: 'opus', numberOfChannels: 1, sampleRate: 48000 });
+        await this.aencoder_.configure({ codec: this.audioCodecType, numberOfChannels: 1, sampleRate: 48000 });
 
         //open device
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -97,14 +121,18 @@ class Encoder {
             //todo:
             let avcSeqHdr = metadata.decoderConfig.description;
             //console.log("avc seq hdr:", avcSeqHdr, "data:", data);
-            this.mux.DoMux({media:"video", timestamp:ts, data:avcSeqHdr, isSeq:true, isKey:false});
+            if ((avcSeqHdr != null) && (avcSeqHdr.byteLength > 0)) {
+                this.mux.DoMux({media:"video", codecType: this.videoCodecType,
+                        timestamp:ts, data:avcSeqHdr, isSeq:true, isKey:false});
+            }
         }
 
         let isKey = false;
         if (type == "key") {
             isKey = true;
         }
-        this.mux.DoMux({media:"video", timestamp:ts, data, isSeq:false, isKey});
+        this.mux.DoMux({media:"video", codecType: this.videoCodecType,
+            timestamp:ts, data, isSeq:false, isKey});
     }
 
     async handleAudioEncoded(chunk, metadata) {
@@ -114,9 +142,11 @@ class Encoder {
         if (metadata.decoderConfig) {
             //todo:
             let audioSeqHdr = metadata.decoderConfig.description;
-            this.mux.DoMux({media:"audio", timestamp:ts, data:audioSeqHdr, isSeq:true, isKey:false});
+            this.mux.DoMux({media:"audio", codecType: this.audioCodecType,
+                    timestamp:ts, data:audioSeqHdr, isSeq:true, isKey:false});
         }
 
-        this.mux.DoMux({media:"audio", timestamp:ts, data, isSeq:false, isKey:false});
+        this.mux.DoMux({media:"audio", codecType: this.audioCodecType,
+                timestamp:ts, data, isSeq:false, isKey:false});
     }
 }

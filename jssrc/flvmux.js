@@ -1,3 +1,8 @@
+let FLV_CODEC_H264 = 7;
+let FLV_CODEC_AV1  = 13;
+let FLV_CODEC_VP8  = 14;
+let FLV_CODEC_VP9  = 15;
+
 class FlvMux {
     constructor() {
         this.initFlag = false;
@@ -32,7 +37,7 @@ class FlvMux {
 
     }
     async DoMux(packet) {
-        let {media, timestamp, data, isSeq, isKey} = packet;
+        let {media, codecType, timestamp, data, isSeq, isKey} = packet;
 
         //console.log("domux media:", media, "timestamp:", timestamp, "data:", data);
         if ((media == null) || (media != "video" && media != "audio")) {
@@ -92,14 +97,21 @@ class FlvMux {
         if (media == "video") {
             //set media header
             if (isSeq) {
-                tagData[11] = 0x17;
+                tagData[11] = 0x10;
                 tagData[12] = 0x00;
             } else if (isKey) {
-                tagData[11] = 0x17;
+                tagData[11] = 0x10;
                 tagData[12] = 0x01;
             } else {
-                tagData[11] = 0x27;
+                tagData[11] = 0x20;
                 tagData[12] = 0x01;
+            }
+            if (codecType == "h264") {
+                tagData[11] |= FLV_CODEC_H264;
+            } else if (codecType == "vp8") {
+                tagData[11] |= FLV_CODEC_VP8
+            } else if (codecType == "vp9") {
+                tagData[11] |= FLV_CODEC_VP9
             }
             tagData[13] = 0x00;
             tagData[14] = 0x00;
